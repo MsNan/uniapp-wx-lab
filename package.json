@@ -1,0 +1,50 @@
+{
+  "name": "uniapp-wx-lab",
+  "version": "0.1.0",
+  "description": "uni-app 微信小程序支付 + 订阅消息联调实验室：字段校验、时机检查、Mock 服务、拷贝即用页面",
+  "main": "lib/index.js",
+  "bin": {
+    "uniapp-wx-lab": "bin/cli.js"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "serve": "node server/index.js",
+    "test": "node --test",
+    "validate:sample": "node bin/cli.js validate examples/payloads/order-shipped.json",
+    "checklist": "node bin/cli.js checklist"
+  },
+  "keywords": [
+    "uni-app",
+    "wechat",
+    "miniprogram",
+    "subscribe-message",
+    "订阅消息",
+    "微信支付",
+    "mock",
+    "requestSubscribeMessage"
+  ],
+  "author": "Theo（涛哥）",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MsNan/uniapp-wx-lab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MsNan/uniapp-wx-lab/issues"
+  },
+  "homepage": "https://github.com/MsNan/uniapp-wx-lab#readme",
+  "files": [
+    "bin",
+    "lib",
+    "server",
+    "examples",
+    "LICENSE",
+    "README.md",
+    "README.en.md"
+  ],
+  "dependencies": {},
+  "devDependencies": {}
+}

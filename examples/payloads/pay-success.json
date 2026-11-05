@@ -1,0 +1,9 @@
+{
+  "template_id": "TMPL_PAY_SUCCESS",
+  "data": {
+    "amount1": { "value": "12.50元" },
+    "time2": { "value": "2026-11-05 18:30" },
+    "thing3": { "value": "会员月卡" },
+    "name4": { "value": "郭涛" }
+  }
+}

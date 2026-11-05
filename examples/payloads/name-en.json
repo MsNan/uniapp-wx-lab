@@ -1,0 +1,15 @@
+{
+  "template_id": "TMPL_PAY_SUCCESS",
+  "templateFields": {
+    "amount1": "amount",
+    "time2": "time",
+    "thing3": "thing",
+    "name4": "name"
+  },
+  "data": {
+    "amount1": { "value": "¥9.90" },
+    "time2": { "value": "10:00" },
+    "thing3": { "value": "Coffee" },
+    "name4": { "value": "Theo Tang" }
+  }
+}
