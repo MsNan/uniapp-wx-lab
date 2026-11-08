@@ -100,6 +100,38 @@ MOCK_SKIP_SIGN=1 curl -s -X POST http://127.0.0.1:3789/mock/pay/notify \
 
 ---
 
+## 微信支付 APIv3 回调：本地验签 + 解密（v0.2.0）
+
+真实 APIv3 回调是「先验签、再解密」。`lib/pay-v3.js` 用 Node 内置 `crypto` 按官方文档规则实现，零依赖、不联网、不保存密钥：
+
+- `verifyNotifySignature({ headers, body, publicKey })`：验签串为 `时间戳\n随机串\n原始body\n`，SHA256 with RSA；
+  - 用**平台证书或微信支付公钥**（不是商户 API 证书）；`body` 必须是原始请求体（先 `JSON.parse` 再 `stringify` 会失败）
+  - `WECHATPAY/SIGNTEST/` 开头的签名是微信的签名探测，返回 `{ ok:false, probe:true }`
+  - 可选 `expectedSerial` 比对 `Wechatpay-Serial`；默认检查时间戳偏差 300 秒（`maxSkewSeconds: 0` 关闭）
+- `decryptNotifyResource(resource, apiV3Key)`：AEAD_AES_256_GCM，32 字节 APIv3 密钥，`nonce` 作 IV，`associated_data` 作 AAD，密文末尾 16 字节为认证标签
+- `encryptNotifyResource(...)`：只用于本地造测试数据
+
+```js
+// npm i github:MsNan/uniapp-wx-lab
+const { verifyNotifySignature, decryptNotifyResource } = require('uniapp-wx-lab');
+const v = verifyNotifySignature({ headers: req.headers, body: rawBody, publicKey: wxpayPublicKeyPem });
+if (!v.ok) return res.status(401).json({ code: 'FAIL', message: v.reason });
+const notify = JSON.parse(rawBody);
+const tx = decryptNotifyResource(notify.resource, process.env.WXPAY_APIV3_KEY);
+```
+
+命令行解密（密钥只从环境变量 `WXPAY_APIV3_KEY` 读取，避免留在 shell 历史）：
+
+```bash
+WXPAY_APIV3_KEY=你的32字节APIv3密钥 npx -y github:MsNan/uniapp-wx-lab decrypt-notify notify.json
+# 仓库样例使用公开测试密钥：
+npx -y github:MsNan/uniapp-wx-lab decrypt-notify examples/payloads/pay-notify-v3.json --lab-key
+```
+
+> `examples/payloads/pay-notify-v3.json` 是用公开测试密钥加密的**示例数据**，商户号、订单号都是虚构的。真实密钥请勿提交进仓库。
+
+---
+
 ## uni-app 示例页
 
 见 [`examples/uni-app/`](./examples/uni-app/)：
@@ -115,9 +147,9 @@ MOCK_SKIP_SIGN=1 curl -s -X POST http://127.0.0.1:3789/mock/pay/notify \
 ## 项目结构
 
 ```
-lib/                 离线校验与 payload 构建（零依赖）
+lib/                 离线校验、payload 构建、APIv3 回调验签/解密（零依赖）
 server/              Mock HTTP 服务（纯 Node http，无 express 依赖）
-bin/cli.js           validate / serve / checklist
+bin/cli.js           validate / serve / checklist / decrypt-notify
 examples/payloads/   合法 / 非法 JSON 样例
 examples/uni-app/    可拷贝页面
 test/                node:test

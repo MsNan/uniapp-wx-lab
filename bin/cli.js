@@ -5,6 +5,9 @@ const fs = require('fs');
 const path = require('path');
 const { validateSubscribeData } = require('../lib/validate-subscribe-data');
 const { SAMPLE_TEMPLATES } = require('../server/templates');
+const { decryptNotifyResource } = require('../lib/pay-v3');
+
+const LAB_APIV3_KEY = 'uniapp-wx-lab-demo-apiv3-key-32b';
 
 const CHECKLIST = `# uni-app 微信小程序 · 支付 + 订阅消息联调清单
 
@@ -31,6 +34,9 @@ const CHECKLIST = `# uni-app 微信小程序 · 支付 + 订阅消息联调清�
 - [ ] **本仓库支付仅为模拟** — 不要把真实 mch_id / api_key / 证书提交进仓库
 - [ ] **支付成功回调后再订阅** — 常见路径：requestPayment success → requestSubscribeMessage
 - [ ] **支付回调验签** — 生产必须验签；本 mock 可用 MOCK_SKIP_SIGN=1 或 lab-test-key HMAC
+- [ ] **APIv3 回调先验签再解密** — 验签串是 \`时间戳\\n随机串\\n原始body\\n\`，用平台证书 / 微信支付公钥（不是商户证书）；可用 \`verifyNotifySignature\` / \`decrypt-notify\` 本地核对
+- [ ] **WECHATPAY/SIGNTEST/ 开头的签名是探测流量** — 必须当验签失败，返回 4xx/5xx
+- [ ] **用原始请求体验签** — 框架先 JSON.parse 再 stringify 会导致验签失败
 - [ ] **notify 幂等** — 微信可能重复通知，按 out_trade_no 去重
 
 ## 推荐本地流程
@@ -48,12 +54,17 @@ Usage:
   uniapp-wx-lab validate <payload.json>
   uniapp-wx-lab serve [--port 3789]
   uniapp-wx-lab checklist
+  uniapp-wx-lab decrypt-notify <notify.json> [--lab-key]
   uniapp-wx-lab help
+
+decrypt-notify 从环境变量 WXPAY_APIV3_KEY 读取 32 字节 APIv3 密钥（不从命令行参数读，避免进 shell 历史）；
+--lab-key 使用仓库样例 examples/payloads/pay-notify-v3.json 的公开测试密钥。
 
 Examples:
   npx -y github:MsNan/uniapp-wx-lab validate examples/payloads/order-shipped.json
   npx -y github:MsNan/uniapp-wx-lab serve
   npx -y github:MsNan/uniapp-wx-lab checklist
+  npx -y github:MsNan/uniapp-wx-lab decrypt-notify examples/payloads/pay-notify-v3.json --lab-key
 `);
 }
 
@@ -95,6 +106,39 @@ function cmdServe(argv) {
   require('../server/index.js');
 }
 
+function cmdDecryptNotify(argv) {
+  const file = argv.find((a) => !a.startsWith('--'));
+  if (!file) {
+    console.error('请指定回调通知 JSON 路径（完整通知或其中的 resource 对象）');
+    process.exit(1);
+  }
+  const abs = path.resolve(process.cwd(), file);
+  if (!fs.existsSync(abs)) {
+    console.error(`文件不存在: ${abs}`);
+    process.exit(1);
+  }
+  const key = argv.includes('--lab-key') ? LAB_APIV3_KEY : process.env.WXPAY_APIV3_KEY;
+  if (!key) {
+    console.error('请设置环境变量 WXPAY_APIV3_KEY（32 字节 APIv3 密钥），或用 --lab-key 解密仓库样例');
+    process.exit(1);
+  }
+  let notify;
+  try {
+    notify = JSON.parse(fs.readFileSync(abs, 'utf8'));
+  } catch (err) {
+    console.error(`JSON 解析失败: ${err.message}`);
+    process.exit(1);
+  }
+  const resource = notify.resource || notify;
+  try {
+    const plain = decryptNotifyResource(resource, key);
+    console.log(JSON.stringify({ ok: true, event_type: notify.event_type || null, resource: plain }, null, 2));
+  } catch (err) {
+    console.error(JSON.stringify({ ok: false, error: err.message }, null, 2));
+    process.exit(1);
+  }
+}
+
 function cmdChecklist() {
   process.stdout.write(CHECKLIST);
 }
@@ -108,6 +152,8 @@ function main(argv) {
       return cmdServe(argv.slice(1));
     case 'checklist':
       return cmdChecklist();
+    case 'decrypt-notify':
+      return cmdDecryptNotify(argv.slice(1));
     case 'help':
     case '-h':
     case '--help':

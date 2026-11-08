@@ -24,3 +24,5 @@ jobs:
         run: npm test
       - name: CLI validate sample
         run: node bin/cli.js validate examples/payloads/order-shipped.json
+      - name: CLI decrypt-notify sample
+        run: node bin/cli.js decrypt-notify examples/payloads/pay-notify-v3.json --lab-key

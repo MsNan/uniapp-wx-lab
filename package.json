@@ -1,6 +1,6 @@
 {
   "name": "uniapp-wx-lab",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "uni-app 微信小程序支付 + 订阅消息联调实验室：字段校验、时机检查、Mock 服务、拷贝即用页面",
   "main": "lib/index.js",
   "bin": {
@@ -21,7 +21,8 @@
     "订阅消息",
     "微信支付",
     "mock",
-    "requestSubscribeMessage"
+    "requestSubscribeMessage",
+    "wechatpay-v3"
   ],
   "author": "Theo（涛哥）",
   "license": "MIT",

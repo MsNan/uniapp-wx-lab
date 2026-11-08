@@ -1,0 +1,14 @@
+{
+  "id": "LAB-EV-0001",
+  "create_time": "2026-11-09T10:00:01+08:00",
+  "resource_type": "encrypt-resource",
+  "event_type": "TRANSACTION.SUCCESS",
+  "summary": "支付成功（实验室样例，非真实回调）",
+  "resource": {
+    "original_type": "transaction",
+    "algorithm": "AEAD_AES_256_GCM",
+    "ciphertext": "7AHWI1JzX/mA3gyjnG6dKwZYgEu3xUGEzmzsPmbS9jt0xtzgmRxKQxrmbyM/lnNd4Pow0tFgXAYIbdzH5JLAkGg8E2JsVAE4Ud2xWczXUscN96pTPaTt1OMD8W8h5Ra8H6FY/9FWG5yGJxOYftngXZrX3zCNEHtTkB1sU3jBpm1ZLKgFXW7XphoQAsH9ZiYwH7mpU2H8lQ6LEa2YojWlMtAtuggY1YtHs/TCmtI6aUWGUl7Rq0OqQTQIjhG+b1E78fXxtawBdDeyqDk8qwrbcHiMmHehlIGGwGAED8Tye0P/RtkDmYIspvRQpNL0UC6d5VfTx3NZi6NISFLW1tvOvdcno0oPTzKrbiamjw15U3TRgzP3r7LYZYOeQqeWL1MpkT/mTzQrjjeNwUuB/ELYZy3T6tX99zlPO2MQpaxQfvZnLFPz/t/W1PGySvMfYYVPwNchh+hD8h46xguhD80kXJeFqwsC9yx9zMBgcsfsER4/Nk8YXJsc1rjbp+29EtouPyPRdcayFLPXpHspFw==",
+    "associated_data": "transaction",
+    "nonce": "labnonce0001"
+  }
+}
