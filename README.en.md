@@ -15,9 +15,6 @@ npx -y github:MsNan/uniapp-wx-lab checklist
 npm test
 ```
 
-MIT © Theo（涛哥）
----
-
 ## WeChat Pay APIv3 notify: local signature check + decrypt (v0.2.0)
 
 `lib/pay-v3.js` (zero deps, Node `crypto` only, offline):
@@ -30,3 +27,7 @@ MIT © Theo（涛哥）
 WXPAY_APIV3_KEY=<32-byte key> npx -y github:MsNan/uniapp-wx-lab decrypt-notify notify.json
 npx -y github:MsNan/uniapp-wx-lab decrypt-notify examples/payloads/pay-notify-v3.json --lab-key   # sample, public test key
 ```
+
+---
+
+MIT © Theo（涛哥）
