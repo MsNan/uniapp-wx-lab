@@ -129,3 +129,27 @@ describe('cli decrypt-notify', () => {
     assert.throws(() => execFileSync(process.execPath, [cli, 'decrypt-notify', sample], { env, stdio: 'pipe' }));
   });
 });
+
+describe('verifyNotifySignature option guards', () => {
+  const body = '{"id":"EV-2"}';
+  const ts = '1762650000';
+  const nonce = 'n2';
+  const headers = { 'wechatpay-timestamp': ts, 'wechatpay-nonce': nonce, 'wechatpay-signature': sign(ts, nonce, body) };
+
+  it('invalid maxSkewSeconds does not silently disable the timestamp check', () => {
+    for (const m of ['', 'abc', '5m', -1, null, NaN]) {
+      const r = verifyNotifySignature({ headers, body, publicKey: pubPem, now: Number(ts) + 86400, maxSkewSeconds: m });
+      assert.equal(r.ok, false, `maxSkewSeconds=${String(m)}`);
+      assert.match(r.reason, /maxSkewSeconds/);
+    }
+    assert.equal(verifyNotifySignature({ headers, body, publicKey: pubPem, now: Number(ts) + 86400, maxSkewSeconds: 0 }).ok, true);
+    assert.equal(verifyNotifySignature({ headers, body, publicKey: pubPem, now: Number(ts) + 10, maxSkewSeconds: '60' }).ok, true);
+  });
+
+  it('expectedSerial set but Wechatpay-Serial missing → fail', () => {
+    const r = verifyNotifySignature({ headers, body, publicKey: pubPem, now: Number(ts), expectedSerial: 'S1' });
+    assert.equal(r.ok, false);
+    assert.match(r.reason, /缺少 Wechatpay-Serial/);
+    assert.equal(verifyNotifySignature({ headers: { ...headers, 'Wechatpay-Serial': 'S1' }, body, publicKey: pubPem, now: Number(ts), expectedSerial: 'S1' }).ok, true);
+  });
+});
