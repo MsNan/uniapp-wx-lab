@@ -166,3 +166,10 @@ MIT © Theo（涛哥）
 ## 创作者主页
 
 我的爱发电主页：[桥页浏览器助手](https://afdian.com/a/bridgepage)。目前正在开发连接现有 Chrome 与 MCP AI 助手的浏览器工具，产品尚未正式开售。
+
+
+### 桥页浏览器助手官网
+
+官网：[桥页 BridgePage — 连接 AI 与现有 Chrome](https://bridgepage-activation.xiaobai-noob.workers.dev/)。官网提供产品介绍、下载与安装说明，并公开关联[我的爱发电主页](https://afdian.com/a/bridgepage)。
+
+产品发布记录：[bridgepage-releases](https://github.com/MsNan/bridgepage-releases)。桥页是我开发的另一款独立软件，与本仓库的 uni-app 工具用途不同，目前尚未正式开售。
