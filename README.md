@@ -162,3 +162,7 @@ test/                node:test
 MIT © Theo（涛哥）
 
 不附属于 WeChat / Tencent / DCloud。
+
+## 创作者主页
+
+我的爱发电主页：[桥页浏览器助手](https://afdian.com/a/bridgepage)。目前正在开发连接现有 Chrome 与 MCP AI 助手的浏览器工具，产品尚未正式开售。
