@@ -85,6 +85,8 @@ const { validateSubscribeData, checkSubscribeTiming, buildSubscribePayload } = r
 | GET | `/mock/subscribe/recent` | 最近 N 次订阅下发记录 |
 | POST | `/mock/subscribe/send` | 按示例模板校验 `data`，返回类微信 `{ errcode, errmsg }` |
 | POST | `/mock/pay/notify` | 模拟支付回调；`MOCK_SKIP_SIGN=1` 跳过验签，否则用 `MOCK_API_KEY`（默认 `lab-test-key`）对 body 做 HMAC-SHA256 hex |
+| POST | `/mock/pay/notify-v3` | APIv3 回调「商户端参考实现」：先验签再解密，成功应答 **204 无包体**，失败 4xx + `{"code":"FAIL","message":...}`（见下文 v0.3.0） |
+| GET | `/mock/pay/recent` | 最近 N 次 notify-v3 处理结果（含解密后的 resource、是否重复通知） |
 
 内置示例 `template_id`：`TMPL_ORDER_SHIPPED`、`TMPL_PAY_SUCCESS`、`TMPL_APPOINTMENT`（**不是**真实微信模板 ID）。
 
@@ -129,6 +131,25 @@ npx -y github:MsNan/uniapp-wx-lab decrypt-notify examples/payloads/pay-notify-v3
 ```
 
 > `examples/payloads/pay-notify-v3.json` 是用公开测试密钥加密的**示例数据**，商户号、订单号都是虚构的。真实密钥请勿提交进仓库。
+
+### Mock 端点 `/mock/pay/notify-v3`（v0.3.0）
+
+按官方「支付成功回调通知」的应答规则写的一个**商户端参考实现**，方便对照自己的后端：
+
+1. `Wechatpay-Signature` 以 `WECHATPAY/SIGNTEST/` 开头（签名探测）→ 一律按验签失败应答，`MOCK_SKIP_SIGN=1` 也不例外
+2. 验签：公钥来自 `MOCK_WXPAY_PUBLIC_KEY_FILE`（平台证书 / 微信支付公钥 PEM 路径）；可选 `MOCK_WXPAY_SERIAL` 比对 `Wechatpay-Serial`、`MOCK_MAX_SKEW_SECONDS`（默认 300，0 关闭）；未配置公钥时返回 401 并提示，`MOCK_SKIP_SIGN=1` 可只练解密
+3. 解密 `resource`：密钥取 `MOCK_APIV3_KEY`，未设置时用仓库公开测试密钥
+4. 成功 → **HTTP 204，无应答包体**；验签 / 解密 / 报文失败 → 4xx + `{"code":"FAIL","message":"..."}`（额外的 `lab` 字段是实验室排错提示，真实后端不需要）
+5. 幂等：同一 `event_type + out_trade_no` 重复送达仍应答 204，`/mock/pay/recent` 里标 `duplicate: true`
+
+```bash
+MOCK_SKIP_SIGN=1 npx -y github:MsNan/uniapp-wx-lab serve
+curl -i -X POST http://127.0.0.1:3789/mock/pay/notify-v3 \
+  -H 'Content-Type: application/json' --data-binary @examples/payloads/pay-notify-v3.json   # → 204
+curl -s http://127.0.0.1:3789/mock/pay/recent
+```
+
+> 微信不会回调到 `127.0.0.1`（官方要求 notify_url 是外网可访问的 https 地址）。这个端点用于本地对照「验签 → 解密 → 应答 → 幂等」的写法，不能代替真实回调测试。
 
 ---
 

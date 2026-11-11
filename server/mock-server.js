@@ -5,10 +5,119 @@ const crypto = require('crypto');
 const { URL } = require('url');
 const { validateSubscribeData } = require('../lib/validate-subscribe-data');
 const { SAMPLE_TEMPLATES } = require('./templates');
+const fs = require('fs');
+const { verifyNotifySignature, decryptNotifyResource, LAB_APIV3_KEY } = require('../lib/pay-v3');
 
 const DEFAULT_PORT = 3789;
 const MAX_STORE = 50;
 const store = [];
+const payStore = [];
+const seenPayKeys = new Set();
+
+function envTrue(name) {
+  return process.env[name] === '1' || process.env[name] === 'true';
+}
+
+// APIv3 应答规则（微信支付官方「支付成功回调通知」文档）：
+// 验签通过 → HTTP 200/204、无应答包体；验签失败 → 4XX/5XX，并返回 { code: 'FAIL', message }。
+function v3Fail(res, status, message, extra) {
+  const body = { code: 'FAIL', message };
+  if (extra) body.lab = extra;
+  return json(res, status, body);
+}
+
+function pushPay(entry) {
+  payStore.push(entry);
+  if (payStore.length > MAX_STORE) payStore.shift();
+}
+
+function loadPublicKey() {
+  const inline = process.env.MOCK_WXPAY_PUBLIC_KEY;
+  if (inline && inline.includes('-----BEGIN')) return inline;
+  const file = process.env.MOCK_WXPAY_PUBLIC_KEY_FILE;
+  if (file) return fs.readFileSync(file, 'utf8');
+  return null;
+}
+
+async function handlePayNotifyV3(req, res) {
+  const raw = await readBody(req);
+  const at = new Date().toISOString();
+  const skip = envTrue('MOCK_SKIP_SIGN');
+  const signature = String(req.headers['wechatpay-signature'] || '');
+
+  // 探测签名不管是否跳过验签都按失败处理：这正是要练习的分支
+  if (signature.startsWith('WECHATPAY/SIGNTEST/')) {
+    pushPay({ at, ok: false, step: 'verify', probe: true });
+    return v3Fail(res, 401, '签名验证失败', { probe: true, tip: '签名探测流量（WECHATPAY/SIGNTEST/），按验签失败应答 4xx/5xx 即可，微信会带正确签名重发' });
+  }
+
+  if (!skip) {
+    let publicKey;
+    try {
+      publicKey = loadPublicKey();
+    } catch (err) {
+      return v3Fail(res, 500, '读取公钥失败', { tip: `MOCK_WXPAY_PUBLIC_KEY_FILE 读取失败：${err.message}` });
+    }
+    if (!publicKey) {
+      pushPay({ at, ok: false, step: 'verify', reason: 'no public key configured' });
+      return v3Fail(res, 401, '签名验证失败', {
+        tip: '设置 MOCK_WXPAY_PUBLIC_KEY_FILE（平台证书 / 微信支付公钥 PEM 路径）以验签，或 MOCK_SKIP_SIGN=1 只练习解密',
+      });
+    }
+    const maxSkew = process.env.MOCK_MAX_SKEW_SECONDS === undefined ? undefined : process.env.MOCK_MAX_SKEW_SECONDS;
+    const v = verifyNotifySignature({
+      headers: req.headers,
+      body: raw,
+      publicKey,
+      expectedSerial: process.env.MOCK_WXPAY_SERIAL || undefined,
+      maxSkewSeconds: maxSkew,
+    });
+    if (!v.ok) {
+      pushPay({ at, ok: false, step: 'verify', reason: v.reason });
+      return v3Fail(res, 401, '签名验证失败', { reason: v.reason });
+    }
+  }
+
+  let notify;
+  try {
+    notify = JSON.parse(raw);
+  } catch {
+    pushPay({ at, ok: false, step: 'parse', reason: 'body is not JSON' });
+    return v3Fail(res, 400, '报文格式错误', { reason: '回调 body 不是 JSON' });
+  }
+  if (!notify || typeof notify.resource !== 'object' || notify.resource === null) {
+    pushPay({ at, ok: false, step: 'parse', reason: 'missing resource' });
+    return v3Fail(res, 400, '报文格式错误', { reason: '缺少 resource 字段' });
+  }
+
+  let resource;
+  try {
+    resource = decryptNotifyResource(notify.resource, process.env.MOCK_APIV3_KEY || LAB_APIV3_KEY);
+  } catch (err) {
+    pushPay({ at, ok: false, step: 'decrypt', reason: err.message });
+    return v3Fail(res, 400, '解密失败', { reason: err.message });
+  }
+
+  // 幂等：同一通知可能重复送达，已处理过也继续应答成功
+  const outTradeNo = resource && typeof resource === 'object' ? resource.out_trade_no : undefined;
+  const dedupKey = outTradeNo ? `${notify.event_type || ''}:${outTradeNo}` : notify.id ? `id:${notify.id}` : null;
+  const duplicate = dedupKey ? seenPayKeys.has(dedupKey) : false;
+  if (dedupKey) seenPayKeys.add(dedupKey);
+
+  pushPay({
+    at,
+    ok: true,
+    id: notify.id,
+    event_type: notify.event_type,
+    out_trade_no: outTradeNo,
+    trade_state: resource && resource.trade_state,
+    duplicate,
+    skip_sign: skip,
+    resource,
+  });
+  res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+  return res.end();
+}
 
 function json(res, status, body) {
   const raw = JSON.stringify(body);
@@ -128,6 +237,14 @@ function createApp() {
       return json(res, 200, { errcode: 0, errmsg: 'ok' });
     }
 
+    if (method === 'GET' && path === '/mock/pay/recent') {
+      return json(res, 200, { count: payStore.length, items: payStore.slice(-MAX_STORE) });
+    }
+
+    if (method === 'POST' && path === '/mock/pay/notify-v3') {
+      return handlePayNotifyV3(req, res);
+    }
+
     if (method === 'POST' && path === '/mock/pay/notify') {
       const raw = await readBody(req);
       const ct = String(req.headers['content-type'] || '');
@@ -185,4 +302,4 @@ function start(port = Number(process.env.PORT) || DEFAULT_PORT) {
   });
 }
 
-module.exports = { createApp, start, DEFAULT_PORT, SAMPLE_TEMPLATES, store };
+module.exports = { createApp, start, DEFAULT_PORT, SAMPLE_TEMPLATES, store, payStore };

@@ -1,6 +1,6 @@
 {
   "name": "uniapp-wx-lab",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "uni-app 微信小程序支付 + 订阅消息联调实验室：字段校验、时机检查、Mock 服务、拷贝即用页面",
   "main": "lib/index.js",
   "bin": {

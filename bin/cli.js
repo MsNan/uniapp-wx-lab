@@ -5,9 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { validateSubscribeData } = require('../lib/validate-subscribe-data');
 const { SAMPLE_TEMPLATES } = require('../server/templates');
-const { decryptNotifyResource } = require('../lib/pay-v3');
-
-const LAB_APIV3_KEY = 'uniapp-wx-lab-demo-apiv3-key-32b';
+const { decryptNotifyResource, LAB_APIV3_KEY } = require('../lib/pay-v3');
 
 const CHECKLIST = `# uni-app 微信小程序 · 支付 + 订阅消息联调清单
 
@@ -37,6 +35,7 @@ const CHECKLIST = `# uni-app 微信小程序 · 支付 + 订阅消息联调清�
 - [ ] **APIv3 回调先验签再解密** — 验签串是 \`时间戳\\n随机串\\n原始body\\n\`，用平台证书 / 微信支付公钥（不是商户证书）；可用 \`verifyNotifySignature\` / \`decrypt-notify\` 本地核对
 - [ ] **WECHATPAY/SIGNTEST/ 开头的签名是探测流量** — 必须当验签失败，返回 4xx/5xx
 - [ ] **用原始请求体验签** — 框架先 JSON.parse 再 stringify 会导致验签失败
+- [ ] **APIv3 回调应答** — 验签通过回 HTTP 200/204 且无包体；失败回 4xx/5xx + \`{"code":"FAIL","message":"..."}\`；5 秒内应答，业务处理放到应答之后（可用 Mock \`/mock/pay/notify-v3\` 对照）
 - [ ] **notify 幂等** — 微信可能重复通知，按 out_trade_no 去重
 
 ## 推荐本地流程

@@ -28,6 +28,8 @@ WXPAY_APIV3_KEY=<32-byte key> npx -y github:MsNan/uniapp-wx-lab decrypt-notify n
 npx -y github:MsNan/uniapp-wx-lab decrypt-notify examples/payloads/pay-notify-v3.json --lab-key   # sample, public test key
 ```
 
+Mock endpoint `POST /mock/pay/notify-v3` (v0.3.0) is a reference merchant-side receiver: `WECHATPAY/SIGNTEST/` probe signatures always fail; signatures are checked with the PEM at `MOCK_WXPAY_PUBLIC_KEY_FILE` (optional `MOCK_WXPAY_SERIAL`, `MOCK_MAX_SKEW_SECONDS`, or `MOCK_SKIP_SIGN=1` to practise decryption only); the resource is decrypted with `MOCK_APIV3_KEY` (defaults to the public lab key). Success replies **204 with no body**; failures reply 4xx with `{"code":"FAIL","message":...}`, following WeChat Pay's notify docs. Duplicate notifications still get 204 and are flagged in `GET /mock/pay/recent`. WeChat never calls `127.0.0.1`, so this is for checking your handler logic locally, not a replacement for real callbacks.
+
 ---
 
 MIT © Theo（涛哥）
